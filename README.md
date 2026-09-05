@@ -1,6 +1,6 @@
 # java-json-diff
 
-[![CI](https://github.com/kasapdev/java-json-diff/actions/workflows/ci.yml/badge.svg)](https://github.com/kasapdev/java-json-diff/actions/workflows/ci.yml)
+[![CI](https://github.com/kasapdev/java-json-diff/actions/workflows/ci.yml/badge.svg)](https://github.com/kasapdev/java-json-diff/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) ![Java](https://img.shields.io/badge/Java-17-ED8B00?logo=openjdk&logoColor=white)
 
 A small, zero-dependency Java library that parses JSON with a hand-rolled recursive-descent
 parser and computes a structural diff between two JSON documents, reporting each difference
