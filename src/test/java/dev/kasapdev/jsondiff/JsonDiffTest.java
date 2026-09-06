@@ -1,6 +1,7 @@
 package dev.kasapdev.jsondiff;
 
 import java.util.List;
+import java.util.Map;
 
 public final class JsonDiffTest {
 
@@ -17,8 +18,44 @@ public final class JsonDiffTest {
         testPointerEscaping();
         testTopLevelScalarDiff();
         testTopLevelArrayDiff();
+        testDiffingAcrossDifferentMapImplementationsRecursesStructurally();
+        testDiffingAcrossDifferentListImplementationsRecursesStructurally();
+        testIdenticalContentAcrossDifferentMapImplementationsIsNoDiff();
 
         TestKit.finish();
+    }
+
+    private static void testDiffingAcrossDifferentMapImplementationsRecursesStructurally() {
+        // "b" is a hand-built java.util.Map (a different concrete class than the LinkedHashMap
+        // JsonParser produces) representing the same JSON object shape as "a" but with one
+        // changed value. This is the common pattern of comparing parsed JSON against an
+        // "expected" value built with Map.of(...) in a test. The diff must still recurse into
+        // the object key-by-key based on JSON kind, not fail closed just because the two sides
+        // happen to be different concrete Map implementations.
+        Object a = JsonParser.parse("{\"name\":\"Ada\",\"age\":30}");
+        Map<String, Object> b = Map.of("name", "Ada", "age", 31.0);
+        List<DiffEntry> diffs = JsonDiff.diff(a, b);
+        TestKit.check("diffing across Map implementations finds exactly the one real change",
+                diffs.size() == 1);
+        TestKit.check("the change is reported at the specific key, not the whole object",
+                diffs.get(0).path().equals("/age") && diffs.get(0).type() == DiffType.CHANGED);
+    }
+
+    private static void testDiffingAcrossDifferentListImplementationsRecursesStructurally() {
+        Object a = JsonParser.parse("[1,2,3]");
+        List<Object> b = List.of(1.0, 9.0, 3.0);
+        List<DiffEntry> diffs = JsonDiff.diff(a, b);
+        TestKit.check("diffing across List implementations finds exactly the one real change",
+                diffs.size() == 1);
+        TestKit.check("the change is reported at the specific index, not the whole array",
+                diffs.get(0).path().equals("/1") && diffs.get(0).type() == DiffType.CHANGED);
+    }
+
+    private static void testIdenticalContentAcrossDifferentMapImplementationsIsNoDiff() {
+        Object a = JsonParser.parse("{\"a\":1,\"b\":[1,2,3]}");
+        Map<String, Object> b = Map.of("a", 1.0, "b", List.of(1.0, 2.0, 3.0));
+        TestKit.check("structurally identical content across different Map/List implementations produces no diff",
+                JsonDiff.diff(a, b).isEmpty());
     }
 
     private static void testIdenticalDocumentsProduceNoDiff() {
