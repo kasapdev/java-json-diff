@@ -12,6 +12,9 @@ public final class JsonParserTest {
         testNumbers();
         testWhitespaceHandling();
         testMalformedInputThrows();
+        testSurrogatePairUnicodeEscape();
+        testLeadingZeroFollowedByDigitThrows();
+        testDuplicateObjectKeysLastWins();
 
         TestKit.finish();
     }
@@ -85,6 +88,27 @@ public final class JsonParserTest {
         TestKit.check("empty input throws", throwsParseException(""));
         TestKit.check("invalid literal throws", throwsParseException("tru"));
         TestKit.check("number with only minus throws", throwsParseException("-"));
+    }
+
+    private static void testSurrogatePairUnicodeEscape() {
+        // U+1F600 (grinning face emoji), encoded as a UTF-16 surrogate pair via two unicode escape sequences.
+        String json = "\"\\uD83D\\uDE00\"";
+        String parsed = (String) JsonParser.parse(json);
+        String expected = "😀";
+        TestKit.check("surrogate pair unicode escapes combine into the correct full code point", parsed.equals(expected));
+        TestKit.check("surrogate pair unicode escapes produce exactly one code point", parsed.codePointCount(0, parsed.length()) == 1);
+    }
+
+    private static void testLeadingZeroFollowedByDigitThrows() {
+        TestKit.check("a leading zero followed by another digit is rejected", throwsParseException("01"));
+        TestKit.check("a leading zero followed by another digit is rejected inside an array", throwsParseException("[01]"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void testDuplicateObjectKeysLastWins() {
+        Map<String, Object> parsed = (Map<String, Object>) JsonParser.parse("{\"a\":1,\"a\":2}");
+        TestKit.check("duplicate object keys: the last occurrence wins", parsed.get("a").equals(2.0));
+        TestKit.check("duplicate object keys: only one entry is kept, not two", parsed.size() == 1);
     }
 
     private static boolean throwsParseException(String json) {

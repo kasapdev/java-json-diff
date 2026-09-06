@@ -15,6 +15,8 @@ public final class JsonDiffTest {
         testNestedPathReporting();
         testNullValueVsMissingKey();
         testPointerEscaping();
+        testTopLevelScalarDiff();
+        testTopLevelArrayDiff();
 
         TestKit.finish();
     }
@@ -127,5 +129,30 @@ public final class JsonDiffTest {
         Object b = JsonParser.parse("{\"a/b\":1}");
         List<DiffEntry> diffs = JsonDiff.diff(a, b);
         TestKit.check("key containing slash is escaped in reported path", diffs.get(0).path().equals("/a~1b"));
+    }
+
+    private static void testTopLevelScalarDiff() {
+        // Diffing two documents that are themselves bare scalars (not wrapped in an
+        // object/array) should report a single CHANGED entry at the root path "".
+        Object a = JsonParser.parse("5");
+        Object b = JsonParser.parse("6");
+        List<DiffEntry> diffs = JsonDiff.diff(a, b);
+        TestKit.check("top-level scalar diff produces exactly one entry", diffs.size() == 1);
+        TestKit.check("top-level scalar diff type is CHANGED", diffs.get(0).type() == DiffType.CHANGED);
+        TestKit.check("top-level scalar diff path is the empty root path", diffs.get(0).path().equals(""));
+        TestKit.check("top-level scalar diff preserves old/new values", diffs.get(0).oldValue().equals(5.0) && diffs.get(0).newValue().equals(6.0));
+
+        TestKit.check("two equal top-level scalars produce no diff", JsonDiff.diff(JsonParser.parse("\"x\""), JsonParser.parse("\"x\"")).isEmpty());
+    }
+
+    private static void testTopLevelArrayDiff() {
+        // Diffing two documents that are themselves bare top-level arrays should
+        // report entries rooted directly at "/<index>" (no object wrapper).
+        Object a = JsonParser.parse("[1,2,3]");
+        Object b = JsonParser.parse("[1,9,3]");
+        List<DiffEntry> diffs = JsonDiff.diff(a, b);
+        TestKit.check("top-level array diff produces exactly one entry", diffs.size() == 1);
+        TestKit.check("top-level array diff path is rooted at the index directly", diffs.get(0).path().equals("/1"));
+        TestKit.check("top-level array diff type is CHANGED", diffs.get(0).type() == DiffType.CHANGED);
     }
 }
