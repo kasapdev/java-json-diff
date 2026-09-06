@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.2.0] - 2026-09-06
+
+### Fixed
+
+- `JsonDiff.diff()` no longer requires both sides of an object/array to be the exact same
+  Java runtime class in order to recurse into them. Previously, two Maps (or two Lists) with
+  identical *structure* but different concrete implementations — e.g. `JsonParser`'s
+  `LinkedHashMap`/`ArrayList` on one side and a hand-built `Map.of(...)`/`List.of(...)` on the
+  other, a common pattern when diffing parsed JSON against an "expected" value in a test —
+  were reported as one coarse `CHANGED` entry for the entire value instead of being diffed
+  key-by-key / index-by-index. Recursion now keys off JSON "kind" (`instanceof Map` /
+  `instanceof List`) instead of exact class equality.
+
 ## [1.1.0] - 2026-09-06
 
 ### Added

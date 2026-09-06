@@ -39,16 +39,21 @@ public final class JsonDiff {
             out.add(new DiffEntry(path, DiffType.CHANGED, a, b));
             return;
         }
-        if (!a.getClass().equals(b.getClass())) {
-            out.add(new DiffEntry(path, DiffType.CHANGED, a, b));
-            return;
-        }
-        if (a instanceof Map) {
+        // Recurse based on JSON "kind" (object vs. array vs. scalar), not on the exact Java
+        // runtime class. Both sides being a Map (or both a List) is what makes a value a JSON
+        // object (or array) here — see the class javadoc on JsonParser — regardless of which
+        // concrete Map/List implementation produced it. This matters whenever one side didn't
+        // come from JsonParser itself, e.g. an "expected" value hand-built with Map.of()/
+        // List.of() being compared against parsed JSON: those are different concrete classes
+        // than JsonParser's LinkedHashMap/ArrayList, but still the same JSON kind, and should
+        // still be diffed key-by-key / index-by-index instead of reported as one coarse change.
+        if (a instanceof Map && b instanceof Map) {
             diffMaps(path, (Map<String, Object>) a, (Map<String, Object>) b, out);
-        } else if (a instanceof List) {
+        } else if (a instanceof List && b instanceof List) {
             diffLists(path, (List<Object>) a, (List<Object>) b, out);
         } else {
-            // String, Double, Boolean and unequal (Objects.equals already checked above)
+            // Different JSON kinds (e.g. object vs. array), or unequal scalars (String, Double,
+            // Boolean) — Objects.equals already confirmed a and b are unequal above.
             out.add(new DiffEntry(path, DiffType.CHANGED, a, b));
         }
     }
