@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.3.0] - 2026-09-07
+
+### Added
+
+- **JSON Patch (RFC 6902) generation and application.** New `JsonPatch` class:
+  - `JsonPatch.generate(Object a, Object b)` walks the same before/after values as
+    `JsonDiff.diff`, but emits a standard RFC 6902 patch — a `List<PatchOperation>` of
+    `add`/`remove`/`replace` operations addressed by real RFC 6901 JSON Pointer paths — instead
+    of the library's own `DiffEntry` shape.
+  - `JsonPatch.apply(Object before, List<PatchOperation> patch)` is a general-purpose RFC 6902
+    applier: it replays a patch against a document to produce the patched result, without
+    mutating the input. It supports mid-array insertion, the `"-"` append marker, and throws the
+    new `JsonPatchException` when an operation's path doesn't resolve.
+  - Array `add`/`remove` operations are ordered so a patch is safe to apply sequentially:
+    growth is emitted as ascending appends, shrinkage as descending removes (removing
+    highest-index-first so earlier removes never invalidate a later operation's index).
+  - New `PatchOp` enum (`ADD`/`REMOVE`/`REPLACE`) and `PatchOperation` class (`op()`, `path()`,
+    `value()`, plus `toJsonObject()` for the `{"op", "path", "value"}` wire shape).
+  - Proven with a round-trip test: diffing two nontrivial nested documents (objects, arrays,
+    additions, removals, replacements, and keys requiring JSON Pointer escaping), generating a
+    patch from that diff, applying it to the "before" document, and asserting the result equals
+    "after" exactly — both by value equality and independently via `JsonDiff.diff(...).isEmpty()`.
+  - README: new "JSON Patch (RFC 6902)" section with a runnable diff -> generate -> apply ->
+    round-trip example, plus an additional `## Usage` example.
+
 ## [1.2.0] - 2026-09-06
 
 ### Fixed
